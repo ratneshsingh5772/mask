@@ -25,6 +25,9 @@ public class TokenService {
     }
 
     public String generate(Object payload) {
+        if (payload == null) {
+            throw new IllegalArgumentException("Request body must not be empty");
+        }
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
         return Jwts.builder()
@@ -36,6 +39,9 @@ public class TokenService {
     }
 
     public Object decode(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("token must not be blank");
+        }
         Claims claims = Jwts.parser()
                 .verifyWith(signingKey)
                 .build()
