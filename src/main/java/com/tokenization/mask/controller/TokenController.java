@@ -1,18 +1,16 @@
 package com.tokenization.mask.controller;
 
+import com.tokenization.mask.dto.TokenRequest;
+import com.tokenization.mask.dto.TokenResponse;
 import com.tokenization.mask.service.TokenService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 /**
  * Tokenizes and decodes an arbitrary JSON payload (object, array, or scalar) as-is,
- * with no schema or validation - whatever is sent to /generate comes back unchanged
- * from /decode. For the schema-validated, bearer-auth flavor of tokenization, see
- * {@link UserTokenController}.
+ * with no schema - whatever is sent to /generate comes back unchanged from /decode.
  */
 @RestController
 @RequestMapping("/api/token")
@@ -25,12 +23,12 @@ public class TokenController {
     }
 
     @PostMapping("/generate")
-    public Map<String, String> generate(@RequestBody Object payload) {
-        return Map.of("token", tokenService.generate(payload));
+    public TokenResponse generate(@RequestBody Object payload) {
+        return new TokenResponse(tokenService.generate(payload));
     }
 
     @PostMapping("/decode")
-    public Object decode(@RequestBody Map<String, String> body) {
-        return tokenService.decode(body.get("token"));
+    public Object decode(@RequestBody TokenRequest request) {
+        return tokenService.decode(request.token());
     }
 }

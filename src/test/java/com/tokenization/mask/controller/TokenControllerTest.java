@@ -54,6 +54,33 @@ class TokenControllerTest {
                 .andExpect(jsonPath("$[3]").value("x"));
     }
 
+    @Test
+    void generateRejectsAnEmptyBody() throws Exception {
+        mockMvc.perform(post("/api/token/generate")
+                        .contentType("application/json")
+                        .content(""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void decodeRejectsATamperedToken() throws Exception {
+        String token = generateToken(Map.of("userId", 101));
+        String tampered = token.substring(0, token.length() - 1) + (token.endsWith("A") ? "B" : "A");
+
+        mockMvc.perform(post("/api/token/decode")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("token", tampered))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void decodeRejectsABlankToken() throws Exception {
+        mockMvc.perform(post("/api/token/decode")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("token", ""))))
+                .andExpect(status().isBadRequest());
+    }
+
     private String generateToken(Object payload) throws Exception {
         String responseBody = mockMvc.perform(post("/api/token/generate")
                         .contentType("application/json")
