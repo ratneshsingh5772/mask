@@ -1,229 +1,66 @@
 {
   "info": {
     "name": "Tokenized REST API",
-    "description": "Demonstrates an API where the request payload travels as JWT (JWS) claims instead of a JSON body. Run 'Generate Token' first (or any request in Token Issuance) - its test script saves {{token}} and {{userId}} for the rest of the collection.",
+    "description": "Tokenize any JSON payload into a signed JWT, and decode it back. POST /api/token/generate accepts any JSON body (object, array, or scalar) and returns a token; POST /api/token/decode accepts { \"token\": \"...\" } and returns the original payload unchanged.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "tokenized-mask-api"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8082", "type": "string" },
-    { "key": "token", "value": "", "type": "string" },
-    { "key": "userId", "value": "101", "type": "string" }
+    { "key": "token", "value": "", "type": "string" }
   ],
   "item": [
     {
-      "name": "Token Issuance (public)",
-      "item": [
+      "name": "Generate Token",
+      "event": [
         {
-          "name": "Generate Token",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test('token is present', () => pm.expect(body.token).to.be.a('string'));",
-                  "pm.collectionVariables.set('token', body.token);",
-                  "console.log('Saved {{token}} for use in other requests');"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userId\": {{userId}},\n  \"name\": \"Ratnesh\",\n  \"role\": \"ADMIN\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/token/generate",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "token", "generate"]
-            },
-            "description": "Signs a UserPayload (userId, name, role) into a JWS and returns it. This is the only endpoint that still accepts a plain JSON body - it's how a payload becomes a token."
-          }
-        },
-        {
-          "name": "Generate Token - Validation Error (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"userId\": 101,\n  \"name\": \"\",\n  \"role\": \"SUPERUSER\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/token/generate",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "token", "generate"]
-            },
-            "description": "Blank name and an out-of-enum role should fail bean validation with 400."
-          }
-        },
-        {
-          "name": "Decode Token",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token\": \"{{token}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/token/decode",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "token", "decode"]
-            },
-            "description": "Verifies the token's signature/expiry and returns its claims as a UserPayload - useful for inspecting what a token carries."
-          }
-        },
-        {
-          "name": "Decode Token - Tampered (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token\": \"{{token}}tampered\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/token/decode",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "token", "decode"]
-            },
-            "description": "Appending characters breaks the signature - expect 401 with a JWT error detail."
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('token is present', () => pm.expect(body.token).to.be.a('string'));",
+              "pm.collectionVariables.set('token', body.token);"
+            ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 101,\n  \"name\": \"Ratnesh\",\n  \"role\": \"ADMIN\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/token/generate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "token", "generate"]
+        },
+        "description": "Signs any JSON body into a JWT and returns { \"token\": \"...\" }."
+      }
     },
     {
-      "name": "Tokenized Resource (protected)",
-      "item": [
-        {
-          "name": "Create User (payload from token)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
-                  "const body = pm.response.json();",
-                  "pm.test('echoes decoded payload', () => {",
-                  "  pm.expect(body.userId).to.equal(Number(pm.collectionVariables.get('userId')));",
-                  "  pm.expect(body.role).to.equal('ADMIN');",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": { "mode": "raw", "raw": "" },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"]
-            },
-            "description": "No JSON body at all - the request payload is decoded entirely from the bearer JWT by @TokenBody. Run 'Issue Token' first."
-          }
+      "name": "Decode Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{token}}\"\n}"
         },
-        {
-          "name": "Get User By Id",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "{{userId}}"]
-            },
-            "description": "Any valid token authenticates this read; {{userId}} controls which stored user is fetched."
-          }
+        "url": {
+          "raw": "{{baseUrl}}/api/token/decode",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "token", "decode"]
         },
-        {
-          "name": "Get User - Not Found (404)",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/999999",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "999999"]
-            },
-            "description": "A valid token for an id that was never created."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Negative / Auth Errors",
-      "item": [
-        {
-          "name": "Create User - No Token (401)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": { "mode": "raw", "raw": "" },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"]
-            },
-            "description": "No Authorization header - the security filter's entry point rejects it before the controller runs."
-          }
-        },
-        {
-          "name": "Create User - Tampered Token (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}tampered" }
-            ],
-            "body": { "mode": "raw", "raw": "" },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"]
-            },
-            "description": "Signature verification fails in JwtAuthenticationFilter -> 401."
-          }
-        },
-        {
-          "name": "Create User - Malformed Authorization Header (401)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Basic garbage" }
-            ],
-            "body": { "mode": "raw", "raw": "" },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"]
-            },
-            "description": "Missing the 'Bearer ' prefix - the filter ignores it, leaving the request unauthenticated."
-          }
-        }
-      ]
+        "description": "Verifies the token's signature and expiry, then returns the exact JSON payload that was passed to /generate."
+      }
     }
   ]
 }
