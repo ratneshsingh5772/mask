@@ -31,8 +31,8 @@ public class JwtService {
     private final ObjectMapper claimsMapper;
 
     public JwtService(
-            @Value("${jwt.secret}") String base64Secret,
-            @Value("${jwt.expiration-minutes:15}") long expirationMinutes) {
+            @Value("${jwt.users-secret}") String base64Secret,
+            @Value("${jwt.users-expiration-minutes:15}") long expirationMinutes) {
         this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(base64Secret));
         this.tokenTtl = Duration.ofMinutes(expirationMinutes);
         this.claimsMapper = JsonMapper.builder()

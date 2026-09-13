@@ -1,15 +1,15 @@
 package com.tokenization.mask.controller;
 
-import com.tokenization.mask.dto.UserPayload;
-import com.tokenization.mask.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
-import static org.hamcrest.Matchers.matchesPattern;
+import java.util.List;
+import java.util.Map;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,53 +24,42 @@ class TokenControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired
-    private JwtService jwtService;
+    @Test
+    void aFlatJsonObjectRoundTripsThroughGenerateAndDecode() throws Exception {
+        Map<String, Object> payload = Map.of("userId", 101, "name", "Ratnesh", "role", "ADMIN", "test", "test");
+
+        String token = generateToken(payload);
+
+        mockMvc.perform(post("/api/token/decode")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("token", token))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(101))
+                .andExpect(jsonPath("$.name").value("Ratnesh"))
+                .andExpect(jsonPath("$.role").value("ADMIN"))
+                .andExpect(jsonPath("$.test").value("test"));
+    }
 
     @Test
-    void generateReturnsASignedJwtForAValidPayload() throws Exception {
-        UserPayload payload = new UserPayload(101L, "Ratnesh", "ADMIN");
+    void aJsonArrayRoundTripsThroughGenerateAndDecode() throws Exception {
+        List<Object> payload = List.of(1, 2, 3, "x");
 
-        mockMvc.perform(post("/api/token/generate")
+        String token = generateToken(payload);
+
+        mockMvc.perform(post("/api/token/decode")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("token", token))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value(1))
+                .andExpect(jsonPath("$[3]").value("x"));
+    }
+
+    private String generateToken(Object payload) throws Exception {
+        String responseBody = mockMvc.perform(post("/api/token/generate")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value(matchesPattern("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$")))
-                .andExpect(jsonPath("$.expiresAt").exists());
-    }
-
-    @Test
-    void generateRejectsAnInvalidPayload() throws Exception {
-        String invalidJson = "{\"userId\": 101, \"name\": \"\", \"role\": \"SUPERUSER\"}";
-
-        mockMvc.perform(post("/api/token/generate")
-                        .contentType("application/json")
-                        .content(invalidJson))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void decodeReturnsTheOriginalPayloadForAValidToken() throws Exception {
-        UserPayload payload = new UserPayload(202L, "Asha", "MANAGER");
-        String token = jwtService.issue(payload);
-
-        mockMvc.perform(post("/api/token/decode")
-                        .contentType("application/json")
-                        .content("{\"token\": \"" + token + "\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(202))
-                .andExpect(jsonPath("$.name").value("Asha"))
-                .andExpect(jsonPath("$.role").value("MANAGER"));
-    }
-
-    @Test
-    void decodeRejectsATamperedToken() throws Exception {
-        String token = jwtService.issue(new UserPayload(202L, "Asha", "MANAGER"));
-        String tampered = token.substring(0, token.length() - 1) + (token.endsWith("A") ? "B" : "A");
-
-        mockMvc.perform(post("/api/token/decode")
-                        .contentType("application/json")
-                        .content("{\"token\": \"" + tampered + "\"}"))
-                .andExpect(status().isUnauthorized());
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readValue(responseBody, Map.class).get("token").toString();
     }
 }

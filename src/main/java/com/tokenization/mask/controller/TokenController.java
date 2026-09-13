@@ -1,42 +1,36 @@
 package com.tokenization.mask.controller;
 
-import com.tokenization.mask.dto.TokenRequest;
-import com.tokenization.mask.dto.TokenResponse;
-import com.tokenization.mask.dto.UserPayload;
-import com.tokenization.mask.security.JwtService;
-import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
+import com.tokenization.mask.service.TokenService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
+import java.util.Map;
 
 /**
- * Generates and decodes the JWTs that carry request payloads for the rest of this API.
- * Unlike {@link UserController}, these endpoints still take a normal JSON body -
- * they are how a payload gets turned into a token in the first place.
+ * Tokenizes and decodes an arbitrary JSON payload (object, array, or scalar) as-is,
+ * with no schema or validation - whatever is sent to /generate comes back unchanged
+ * from /decode. For the schema-validated, bearer-auth flavor of tokenization, see
+ * {@link UserTokenController}.
  */
 @RestController
 @RequestMapping("/api/token")
 public class TokenController {
 
-    private final JwtService jwtService;
+    private final TokenService tokenService;
 
-    public TokenController(JwtService jwtService) {
-        this.jwtService = jwtService;
+    public TokenController(TokenService tokenService) {
+        this.tokenService = tokenService;
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<TokenResponse> generate(@Valid @RequestBody UserPayload payload) {
-        String token = jwtService.issue(payload);
-        Instant expiresAt = Instant.now().plus(jwtService.getTokenTtl());
-        return ResponseEntity.ok(new TokenResponse(token, expiresAt));
+    public Map<String, String> generate(@RequestBody Object payload) {
+        return Map.of("token", tokenService.generate(payload));
     }
 
     @PostMapping("/decode")
-    public ResponseEntity<UserPayload> decode(@Valid @RequestBody TokenRequest request) {
-        return ResponseEntity.ok(jwtService.parse(request.token(), UserPayload.class));
+    public Object decode(@RequestBody Map<String, String> body) {
+        return tokenService.decode(body.get("token"));
     }
 }

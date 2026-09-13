@@ -36,7 +36,7 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .authorizeHttpRequests(auth -> auth
                         // generating/decoding tokens is how a payload becomes a token in the first place
-                        .requestMatchers("/api/token/**").permitAll()
+                        .requestMatchers("/api/token/**", "/api/v1/users/token/**").permitAll()
                         // Spring re-runs the filter chain for the internal error dispatch (e.g. 404/405);
                         // without this, an unauthenticated request to a bad route is masked as a 401.
                         .requestMatchers("/error").permitAll()
