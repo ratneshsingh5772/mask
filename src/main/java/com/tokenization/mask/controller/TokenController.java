@@ -19,12 +19,12 @@ public class TokenController {
     }
 
     @PostMapping("/generate")
-    public Map<String, String> generate(@RequestBody Map<String, Object> claims) {
-        return Map.of("token", tokenService.generate(claims));
+    public Map<String, String> generate(@RequestBody Object payload) {
+        return Map.of("token", tokenService.generate(payload));
     }
 
     @PostMapping("/decode")
-    public Map<String, Object> decode(@RequestBody Map<String, String> body) {
+    public Object decode(@RequestBody Map<String, String> body) {
         return tokenService.decode(body.get("token"));
     }
 }
