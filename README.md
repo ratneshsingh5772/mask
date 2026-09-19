@@ -63,3 +63,37 @@ JWT_SECRET=$(openssl rand -base64 48) ./mvnw spring-boot:run
 ```
 ./mvnw test
 ```
+
+## Viewing logs in Kibana
+
+The app writes JSON logs to `logs/mask.log` (in addition to the console). A Docker Compose
+stack ships those logs to Elasticsearch and exposes Kibana for browsing/searching them.
+
+Start the stack:
+
+```
+docker compose up -d
+```
+
+This brings up:
+
+- **Elasticsearch** — http://localhost:9200
+- **Kibana** — http://localhost:5601
+- **Filebeat** — tails `logs/mask.log` and ships entries into the `mask-logs-*` index pattern
+
+Run the app as usual (`JWT_SECRET=... ./mvnw spring-boot:run`) so it starts writing to `logs/`.
+
+Then in Kibana:
+
+1. Open http://localhost:5601.
+2. Go to **Stack Management → Data Views** (or **Discover**, which will prompt you) and create a
+   data view/index pattern for `mask-logs-*`, using `@timestamp` as the time field.
+3. Open **Discover** and select the `mask-logs-*` data view to search and filter application logs.
+
+Stop the stack with:
+
+```
+docker compose down
+```
+
+Add `-v` to also drop the Elasticsearch data volume.

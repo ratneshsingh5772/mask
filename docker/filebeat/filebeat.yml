@@ -1,0 +1,20 @@
+filebeat.inputs:
+  - type: filestream
+    id: mask-app-logs
+    paths:
+      - /var/log/mask/*.log
+    parsers:
+      - ndjson:
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "mask-logs-%{+yyyy.MM.dd}"
+
+setup.template.name: "mask-logs"
+setup.template.pattern: "mask-logs-*"
+setup.ilm.enabled: false
+
+logging.level: info
